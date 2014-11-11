@@ -1,20 +1,20 @@
-#! /usr/bin/env sh
+#! /usr/bin/env bash
 
 printUsage() {
 	echo  ""
 	echo  "Usage:"
 	echo  ""
-	echo  "  riakcli list buckets                                   -> Lists all the buckets available in RIAK"
-	echo  "  riakcli list keys [bucket-name]                        -> Lists all keys in a given bucket"
+	echo  "  riakcli list buckets [bucket-type]                                   -> Lists all the buckets available in RIAK"
+	echo  "  riakcli list keys [bucket-type] [bucket-name]                        -> Lists all keys in a given bucket"
 	echo  ""
-	echo  "  riakcli get object [bucket-name] [key]                 -> Gets the object associated with a given key in a specified bucket"	
-	echo  "  riakcli put object [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket"
-	echo  "  riakcli search by_index [bucket-name] [index-name] [index-value]"
-	echo  "                                                         -> Searches given value by secondary index in a specified bucket"
+	echo  "  riakcli get object [bucket-type] [bucket-name] [key]                 -> Gets the object associated with a given key in a specified bucket"	
+	echo  "  riakcli put object [bucket-type] [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket"
+	echo  "  riakcli search by_index [bucket-type] [bucket-name] [index-name] [index-value]"
+	echo  "                                                                       -> Searches given value by secondary index in a specified bucket"
 	echo  ""
-	echo  "  riakcli delete bucket [bucket-name]                    -> Deletes all objects in a specified bucket"
-	echo  "  riakcli delete object [bucket-name] [key]              -> Deletes an object in a given bucket"
-	echo  "  riakcli flush                                          -> Deletes all the buckets in RIAK"
+	echo  "  riakcli delete bucket [bucket-type] [bucket-name]                    -> Deletes all objects in a specified bucket"
+	echo  "  riakcli delete object [bucket-type] [bucket-name] [key]              -> Deletes an object in a given bucket"
+	echo  "  riakcli flush [bucket-type]                                          -> Deletes all the buckets in RIAK"
 	echo  ""
 	echo  "  riakcli ping                                           -> Connects to RIAK instance for status"
 	echo  "  riakcli help                                           -> Displays this usage information"	
@@ -66,69 +66,79 @@ ping() {
 }
 
 listBuckets() {
-	crl -s ${RIAK_BASE_URL}/buckets?buckets=true
+	checkForArgs 1 "riakcli list buckets [bucket-type]" $*
+	local TYPE=$1; shift;
+	crl -s ${RIAK_BASE_URL}/types/${TYPE}/buckets?buckets=true
 }
 
 listKeysInBucket() {
-	checkForArgs 1 "riakcli list keys [bucket-name]" $*
-	local BUCKET=$1
-	crl ${RIAK_BASE_URL}/buckets/${BUCKET}/keys?keys=true 
+	checkForArgs 2 "riakcli list keys [bucket-type] [bucket-name]" $*
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys?keys=true 
 }
 
 getObject() {
-	checkForArgs 2 "riakcli get object [bucket-name] [key]" $*
+	checkForArgs 3 "riakcli get object [bucket-type] [bucket-name] [key]" $*
 
-	local BUCKET=$1
-	local KEY=$2
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	local KEY=$1; shift;
 
-	crl ${RIAK_BASE_URL}/riak/${BUCKET}/${KEY}
+	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY}
 }
 
 putObject() {	
-	checkForArgs 3 "riakcli put object [bucket-name] [key] [object-json]" $*
+	checkForArgs 4 "riakcli put object [bucket-type] [bucket-name] [key] [object-json]" $*
 
-	local BUCKET=$1
-	local KEY=$2
-	shift 2	
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	local KEY=$1; shift;
 
 	local OBJECT=$* 
-	OBJECT=`echo ${OBJECT} | sed "s/ //g"`
-	cput ${RIAK_BASE_URL}/riak/${BUCKET}/${KEY} ${OBJECT}
+	OBJECT=$(echo ${OBJECT} | sed "s/ //g")
+	cput ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY} ${OBJECT}
 }
 
 searchByIndex() {
-	checkForArgs 3 "search by_index [bucket-name] [index-name] [index-value]" $*	
-	local BUCKET=$1
-	local INDEX=$2
-	local VALUE=$3
+	checkForArgs 4 "search by_index [bucket-type] [bucket-name] [index-name] [index-value]" $*	
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	local INDEX=$1; shift;
+	local VALUE=$1; shift;
 
-	crl ${RIAK_BASE_URL}/buckets/${BUCKET}/index/${INDEX}_bin/${VALUE}
+	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/index/${INDEX}_bin/${VALUE}
 }
 
 deleteBucket() {
-	checkForArgs 1 "riakcli delete bucket [bucket-name]" $*
-	local BUCKET=$1
+	checkForArgs 2 "riakcli delete bucket [bucket-type] [bucket-name]" $*
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
 	
-	for KEY in `listKeysInBucket ${BUCKET} | sed -e 's/^.*\[//g' -e 's/"//g' -e 's/\]\}//g' -e 's/,/\'$'\n/g'`;
+	for KEY in $(listKeysInBucket ${TYPE} ${BUCKET} | sed -e 's/^.*\[//g' -e 's/"//g' -e 's/\]\}//g' -e 's/,/\'$'\n/g');
     do
-        deleteObject ${BUCKET} ${KEY}
+        deleteObject ${TYPE} ${BUCKET} ${KEY}
     done;
 }
 
 deleteObject() {
-	checkForArgs 2 "riakcli delete object [bucket-name] [key]" $*
+	checkForArgs 3 "riakcli delete object [bucket-type] [bucket-name] [key]" $*
 
-	local BUCKET=$1
-	local KEY=$2
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	local KEY=$1; shift;
 
-	cdel ${RIAK_BASE_URL}/riak/${BUCKET}/${KEY};
+	cdel ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY};
 }
 
 flush() {
-	for BUCKET in  `listBuckets | cut -d ':' -f2 | sed -e 's/^.*\[//g' -e 's/"//g' -e 's/\]\}//g' -e 's/,/\'$'\n/g'`;
+	checkForArgs 1 "riakcli flush [bucket-type]" $*
+	local TYPE=$1; shift;
+	
+	for BUCKET in  $(listBuckets ${TYPE} | cut -d ':' -f2 | sed -e 's/^.*\[//g' -e 's/"//g' -e 's/\]\}//g' -e 's/,/\'$'\n/g');
 	do
-		echo "Deleting bucket - ${BUCKET}"
-		deleteBucket ${BUCKET}
+		echo "Deleting bucket - types/${TYPE}/buckets/${BUCKET}"
+		deleteBucket ${TYPE} ${BUCKET}
 	done;
 }
 
@@ -141,11 +151,12 @@ valuesFromJson() {
 
 list() {
 	case "$1" in
-		"buckets" )			
-			listBuckets
+		"buckets" )
+			shift
+			listBuckets $*
 			;;
 		"keys" )
-			shift			
+			shift
 			listKeysInBucket $* | valuesFromJson
 			;;
 		* )
@@ -157,7 +168,7 @@ list() {
 get() {
 	case "$1" in
 		"object" )
-			shift 			
+			shift
 			getObject $*
 			;;
 		* )
@@ -219,7 +230,12 @@ __init__() {
 	RIAK_BASE_URL="http://${RIAK_HOST}:${RIAK_PORT}"
 	export RIAK_BASE_URL
 
-
+	case "$1" in
+		"-w" )
+			set -x
+			shift
+			;;
+	esac
 
 	case "$1" in
 		"help" )
@@ -249,12 +265,12 @@ __init__() {
 			delete $*
 			;;
 		"flush" )
-			flush
+			flush $*
 			;;
 		* )
 			printUsage
 			;;
-	esac	
+	esac
 }
 
 __init__ $*

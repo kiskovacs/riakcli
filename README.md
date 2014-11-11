@@ -17,17 +17,17 @@ Here you go !!
 ```
 Usage:
 
-  riakcli list buckets                                   -> Lists all the buckets available in RIAK
-  riakcli list keys [bucket-name]                        -> Lists all keys in a given bucket
+  riakcli list buckets [bucket-type]                                   -> Lists all the buckets available in RIAK
+  riakcli list keys [bucket-type] [bucket-name]                        -> Lists all keys in a given bucket
 
-  riakcli get object [bucket-name] [key]                 -> Gets the object associated with a given key in a specified bucket
-  riakcli put object [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket
-  riakcli search by_index [bucket-name] [index-name] [index-value]
+  riakcli get object [bucket-type] [bucket-name] [key]                 -> Gets the object associated with a given key in a specified bucket
+  riakcli put object [bucket-type] [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket
+  riakcli search by_index [bucket-type] [bucket-name] [index-name] [index-value]
                                                          -> Searches given value by secondary index in a specified bucket
 
-  riakcli delete bucket [bucket-name]                    -> Deletes all objects in a specified bucket
-  riakcli delete object [bucket-name] [key]              -> Deletes an object in a given bucket
-  riakcli flush                                          -> Deletes all the buckets in RIAK
+  riakcli delete bucket [bucket-type] [bucket-name]                    -> Deletes all objects in a specified bucket
+  riakcli delete object [bucket-type] [bucket-name] [key]              -> Deletes an object in a given bucket
+  riakcli flush [bucket-type]                                          -> Deletes all the buckets in RIAK
 
   riakcli ping                                           -> Connects to RIAK instance for status
   riakcli help                                           -> Displays this usage information
