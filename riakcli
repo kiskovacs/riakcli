@@ -265,6 +265,7 @@ __init__() {
 			delete $*
 			;;
 		"flush" )
+			shift
 			flush $*
 			;;
 		* )
