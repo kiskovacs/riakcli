@@ -11,10 +11,14 @@ printUsage() {
 	echo  "  riakcli put object [bucket-type] [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket"
 	echo  "  riakcli search by_index [bucket-type] [bucket-name] [index-name] [index-value]"
 	echo  "                                                                       -> Searches given value by secondary index in a specified bucket"
+	echo  "  riakcli search by_yz [index-name] [query]"
+	echo  "                                                                       -> Searches by yokozuna"
 	echo  ""
 	echo  "  riakcli delete bucket [bucket-type] [bucket-name]                    -> Deletes all objects in a specified bucket"
 	echo  "  riakcli delete object [bucket-type] [bucket-name] [key]              -> Deletes an object in a given bucket"
 	echo  "  riakcli flush [bucket-type]                                          -> Deletes all the buckets in RIAK"
+	echo  "  riakcli create search_index [index-name] (n_val)                     -> Create a search index"
+	echo  "  riakcli assign search_index [bucket-type] [bucket-name] [index-name] -> Assign a bucket to a search index"
 	echo  ""
 	echo  "  riakcli ping                                           -> Connects to RIAK instance for status"
 	echo  "  riakcli help                                           -> Displays this usage information"	
@@ -43,6 +47,27 @@ checkForArgs() {
 		printUsage
 		exit	
 	fi
+}
+
+#https://gist.github.com/cdown/1163649
+urlencode() {
+    # urlencode <string>
+ 
+    local length="${#1}"
+    for (( i = 0; i < length; i++ )); do
+        local c="${1:i:1}"
+        case $c in
+            [a-zA-Z0-9.~_-]) printf "$c" ;;
+            *) printf '%%%02X' "'$c"
+        esac
+    done
+}
+ 
+urldecode() {
+    # urldecode <string>
+ 
+    local url_encoded="${1//+/ }"
+    printf '%b' "${url_encoded//%/\x}"
 }
 
 crl() {
@@ -89,6 +114,32 @@ listKeysInBucket() {
 	local TYPE=$1; shift;
 	local BUCKET=$1; shift;
 	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys?keys=true 
+}
+
+assignSearchIndex() {
+	checkForArgs 3 "riakcli assign search_index [bucket-type] [bucket-name] [index-name]" $*
+
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	local INDEX=$1; shift;
+
+	cput ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/props "{\"props\":{\"search_index\":\"${INDEX}\"}}"
+}
+
+createSearchIndex() {
+	checkForArgs 1 "riakcli create index [index-name] ([n_val])" $*
+
+	local NAME=$1; shift;
+	local NVAL="";
+	if [[ $1 ]]; then
+		NVAL=$1; shift;
+	fi
+
+	if [[ ${NVAL} ]]; then
+		cput ${RIAK_BASE_URL}/search/index/${NAME} "{\"schema\":\"_yz_default\",\"n_val\":${NVAL}}"
+	else
+		cput ${RIAK_BASE_URL}/search/index/${NAME} '{"schema":"_yz_default"}'
+	fi
 }
 
 getObject() {
@@ -142,6 +193,31 @@ searchByIndex() {
 	local VALUE=$1; shift;
 
 	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/index/${INDEX}_bin/${VALUE}
+}
+
+encodeValue() {
+	case $1 in
+		*=* )
+			echo ${1%%=*}=$(urlencode ${1#*=})
+			;;
+		* )
+			echo $(urlencode ${1})
+			;;
+	esac	
+}
+
+searchByYokozuna() {
+	checkForArgs 3 "riakcli search by_yz [index-name] [query]" $*	
+	local INDEX=$1; shift;
+	local QUERY="";
+	
+	QUERY=$(encodeValue $1); shift;
+	while [[ $1 ]]
+	do
+		QUERY+="&"$(encodeValue $1); shift;
+	done
+
+	crl ${RIAK_BASE_URL}/search/query/${INDEX}?${QUERY}
 }
 
 deleteBucket() {
@@ -199,6 +275,30 @@ list() {
 	esac	
 }
 
+assign() {
+	case "$1" in
+		"search_index" )
+			shift
+			assignSearchIndex $*
+			;;
+		* )
+			printInvalidUsage			
+			;;
+	esac	
+}
+
+create() {
+	case "$1" in
+		"search_index" )
+			shift
+			createSearchIndex $*
+			;;
+		* )
+			printInvalidUsage			
+			;;
+	esac	
+}
+
 get() {
 	case "$1" in
 		"object" )
@@ -216,6 +316,10 @@ search() {
 		"by_index" )
 			shift
 			searchByIndex $* | valuesFromJson
+			;;
+		"by_yz" )
+			shift
+			searchByYokozuna $*
 			;;
 		* ) 
 			printInvalidUsage			
@@ -301,6 +405,14 @@ __init__() {
 		"flush" )
 			shift
 			flush $*
+			;;
+		"create" )
+			shift
+			create $*
+			;;
+		"assign" )
+			shift
+			assign $*
 			;;
 		* )
 			printUsage

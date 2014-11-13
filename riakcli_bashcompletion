@@ -4,9 +4,19 @@ _riakcli() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    opts="list search get put delete flush ping help"
+    opts="create list assign search get put delete flush ping help"
 
     case "${prev}" in
+		assign)
+                    local list_opts="search_index"
+                    COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
+                return 0
+                ;;
+		create)
+                    local list_opts="search_index"
+                    COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
+                return 0
+                ;;
 		list)
 		    local list_opts="keys buckets"
 		    COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
@@ -26,7 +36,7 @@ _riakcli() {
 	    	return 0
 	    	;;	       
 	    search )
-	    	local search_opts="by_index"
+	    	local search_opts="by_index by_yz"
 		    COMPREPLY=( $(compgen -W "${search_opts}" -- ${cur}) )
 	        return 0
 	        ;;
