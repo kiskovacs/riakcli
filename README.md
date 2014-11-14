@@ -23,11 +23,14 @@ Usage:
   riakcli get object [bucket-type] [bucket-name] [key]                 -> Gets the object associated with a given key in a specified bucket
   riakcli put object [bucket-type] [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket
   riakcli search by_index [bucket-type] [bucket-name] [index-name] [index-value]
-                                                         -> Searches given value by secondary index in a specified bucket
-
+                                                                       -> Searches given value by secondary index in a specified bucket
+  riakcli search by_yz [index-name] [query]
+                                                                       -> Searches by yokozuna
   riakcli delete bucket [bucket-type] [bucket-name]                    -> Deletes all objects in a specified bucket
   riakcli delete object [bucket-type] [bucket-name] [key]              -> Deletes an object in a given bucket
   riakcli flush [bucket-type]                                          -> Deletes all the buckets in RIAK
+  riakcli create search_index [index-name] (n_val)                     -> Create a search index
+  riakcli assign search_index [bucket-type] [bucket-name] [index-name] -> Assign a bucket to a search index
 
   riakcli ping                                           -> Connects to RIAK instance for status
   riakcli help                                           -> Displays this usage information
@@ -36,9 +39,8 @@ Usage:
 ### How do I get started ?
 
 ```bash
-git clone https://github.com/katta/riakcli.git
+git clone https://github.com/mtakahashi-ivi/riakcli.git
 cd riakcli      
-git checkout v0.1 ## Replace v0.1 with any release version you would like to install
 ./install.sh      ## After installation, source the riakcli_bashcompletion script as mentioned in installation logs
 ```
 
@@ -53,8 +55,6 @@ Please note __~/.riakclirc__ is created by installation script automatically.
 
 ### Whats coming later ?
 
-* Search by secondary indices
-* Search by full text queries
 * Support for HTTPS
 * Support for authentication enabled RIAK
 * Support for updating objects with headers
