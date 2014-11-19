@@ -8,7 +8,8 @@ printUsage() {
 	echo  "  riakcli list keys [bucket-type] [bucket-name]                        -> Lists all keys in a given bucket"
 	echo  ""
 	echo  "  riakcli get object [bucket-type] [bucket-name] [key]                 -> Gets the object associated with a given key in a specified bucket"	
-	echo  "  riakcli put object [bucket-type] [bucket-name] [key] [object-json]   -> Creates/Updates an object for a given key in a specified bucket"
+	echo  "  riakcli put object (with_dt) (-ib [index-name] [index-value])* [bucket-type] [bucket-name] [key] [object-json]"
+	echo  "                                                                       -> Creates/Updates an object for a given key in a specified bucket"
 	echo  "  riakcli search by_index [bucket-type] [bucket-name] [index-name] [index-value]"
 	echo  "                                                                       -> Searches given value by secondary index in a specified bucket"
 	echo  "  riakcli search by_yz [index-name] [query]"
@@ -74,13 +75,13 @@ crl() {
 	curl -sS -w "\n" $*
 }
 
-cput() {	
+cput() {
 	local URL=$1
 	local DATA=$2
 	crl -XPUT -H "Content-Type:application/json" ${URL} -d ${DATA}
 }
 
-cput2i() {	
+cput2i() {
 	local URL=$1; shift;
 	local DATA=$1; shift;
 	local SI=""
@@ -91,6 +92,25 @@ cput2i() {
 		done
 	fi		
 	crl -XPUT -H "Content-Type:application/json" ${URL} ${SI} -d ${DATA}
+}
+
+cpost() {
+	local URL=$1
+	local DATA=$2
+	crl -XPOST -H "Content-Type:application/json" ${URL} -d ${DATA}
+}
+
+cpost2i() {
+	local URL=$1; shift;
+	local DATA=$1; shift;
+	local SI=""
+	if (( $# != 0 && $# % 2 == 0 )); then
+		while [[ $1 ]]; do
+			SI+="-H x-riak-index-$1_bin:";shift
+			SI+="$1";shift
+		done
+	fi		
+	crl -XPOST -H "Content-Type:application/json" ${URL} ${SI} -d ${DATA}
 }
 
 cdel() {
@@ -143,17 +163,58 @@ createSearchIndex() {
 }
 
 getObject() {
-	checkForArgs 3 "riakcli get object [bucket-type] [bucket-name] [key]" $*
+	local DT=""
+	case "$1" in
+		"with_dt" )
+			shift
+			DT="datatypes"
+			;;
+		* )
+			DT="keys"
+			;;
+	esac
+	
+	checkForArgs 3 "riakcli get object (with_dt) [bucket-type] [bucket-name] [key]" $*
 
 	local TYPE=$1; shift;
 	local BUCKET=$1; shift;
 	local KEY=$1; shift;
 
-	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY}
+	crl ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/${DT}/${KEY}
 }
 
-putObject() {	
-	checkForArgs 4 "riakcli put object [bucket-type] [bucket-name] [key] [object-json] (-ib [index-name] [index-value])*" $*
+putObject() {
+	local DT=""
+	local METHOD=""
+	case "$1" in
+		"with_dt" )
+			shift
+			DT="datatypes"
+			METHOD="cpost"
+			;;
+		* )
+			DT="keys"
+			METHOD="cput"
+			;;
+	esac
+	
+	local INDEX_ARRAY=()
+	while [[ $1 ]]; do
+		case "$1" in
+			"-ib" )
+				shift
+				if [[ $1 == "" ]];then printInvalidUsage; exit; fi
+					INDEX_ARRAY=("${INDEX_ARRAY[@]}" $1); shift
+				if [[ $1 == "" ]];then printInvalidUsage; exit; fi
+					INDEX_ARRAY=("${INDEX_ARRAY[@]}" $1); shift
+					;;
+			* )
+				break
+				;;
+		esac
+	done 
+	
+	checkForArgs 4 "riakcli put object (with_dt) (-ib [index-name] [index-value])* [bucket-type] [bucket-name] [key] [object-json]" $*
 
 	local TYPE=$1; shift;
 	local BUCKET=$1; shift;
@@ -161,27 +222,11 @@ putObject() {
 	local OBJECT=$1; shift;
 	OBJECT=$(echo ${OBJECT} | sed "s/ //g")
 	
-	local INDEX_ARRAY=()
-	while [[ $1 ]]
-	do
-		case "$1" in
-			"-ib" )
-				shift
-				if [[ $1 == "" ]];then printInvalidUsage; exit; fi
-				INDEX_ARRAY=("${INDEX_ARRAY[@]}" $1); shift
-				if [[ $1 == "" ]];then printInvalidUsage; exit; fi
-				INDEX_ARRAY=("${INDEX_ARRAY[@]}" $1); shift
-				;;
-			* )
-				printInvalidUsage		
-				;;
-		esac
-	done
 	
 	if (( ${#INDEX_ARRAY[@]} == 0 )); then
-		cput ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY} ${OBJECT}
+		${METHOD} ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/${DT}/${KEY} ${OBJECT}
 	else
-		cput2i ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY} ${OBJECT} ${INDEX_ARRAY[@]}
+		${METHOD}2i ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/${DT}/${KEY} ${OBJECT} ${INDEX_ARRAY[@]}
 	fi
 }
 
@@ -207,7 +252,7 @@ encodeValue() {
 }
 
 searchByYokozuna() {
-	checkForArgs 3 "riakcli search by_yz [index-name] [query]" $*	
+	checkForArgs 2 "riakcli search by_yz [index-name] [query]" $*	
 	local INDEX=$1; shift;
 	local QUERY="";
 	

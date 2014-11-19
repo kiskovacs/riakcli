@@ -8,15 +8,15 @@ _riakcli() {
 
     case "${prev}" in
 		assign)
-                    local list_opts="search_index"
-                    COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
-                return 0
-                ;;
+            local list_opts="search_index"
+            COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
+            return 0
+            ;;
 		create)
-                    local list_opts="search_index"
-                    COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
-                return 0
-                ;;
+            local list_opts="search_index"
+            COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
+            return 0
+            ;;
 		list)
 		    local list_opts="keys buckets"
 		    COMPREPLY=( $(compgen -W "${list_opts}" -- ${cur}) )
