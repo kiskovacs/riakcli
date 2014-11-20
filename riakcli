@@ -243,23 +243,23 @@ searchByIndex() {
 encodeValue() {
 	case $1 in
 		*=* )
-			echo ${1%%=*}=$(urlencode ${1#*=})
+			echo ${1%%=*}=$(urlencode "${1#*=}")
 			;;
 		* )
-			echo $(urlencode ${1})
+			echo $(urlencode "${1}")
 			;;
 	esac	
 }
 
 searchByYokozuna() {
-	checkForArgs 2 "riakcli search by_yz [index-name] [query]" $*	
+	checkForArgs 2 "riakcli search by_yz [index-name] [query]" "$@"
 	local INDEX=$1; shift;
 	local QUERY="";
 	
-	QUERY=$(encodeValue $1); shift;
+	QUERY=$(encodeValue "$1"); shift;
 	while [[ $1 ]]
 	do
-		QUERY+="&"$(encodeValue $1); shift;
+		QUERY+="&"$(encodeValue "$1"); shift;
 	done
 
 	crl ${RIAK_BASE_URL}/search/query/${INDEX}?${QUERY}
@@ -364,7 +364,7 @@ search() {
 			;;
 		"by_yz" )
 			shift
-			searchByYokozuna $*
+			searchByYokozuna "$@"
 			;;
 		* ) 
 			printInvalidUsage			
@@ -376,7 +376,7 @@ put() {
 	case "$1" in
 		"object" )
 			shift
-			putObject $*
+			putObject "$@"
 			;;
 		* )
 			printInvalidUsage			
@@ -413,12 +413,6 @@ __init__() {
 	RIAK_BASE_URL="http://${RIAK_HOST}:${RIAK_PORT}"
 	export RIAK_BASE_URL
 
-	case "$1" in
-		"-w" )
-			set -x
-			shift
-			;;
-	esac
 
 	case "$1" in
 		"help" )
@@ -429,7 +423,7 @@ __init__() {
 			;;
 		"put" )
 			shift
-			put $*
+			put "$@"
 			;;
 		"get" )
 			shift
@@ -437,7 +431,7 @@ __init__() {
 			;;
 		"search" )
 			shift
-			search $*
+			search "$@"
 			;;
 		"list" )
 			shift
@@ -465,4 +459,11 @@ __init__() {
 	esac
 }
 
-__init__ $*
+case "$1" in
+	"-w" )
+		set -x
+		shift
+		;;
+esac
+
+__init__ "$@"
