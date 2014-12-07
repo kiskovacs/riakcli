@@ -17,7 +17,7 @@ printUsage() {
 	echo  ""
 	echo  "  riakcli delete bucket [bucket-type] [bucket-name]                    -> Deletes all objects in a specified bucket"
 	echo  "  riakcli delete object [bucket-type] [bucket-name] [key]              -> Deletes an object in a given bucket"
-	echo  "  riakcli flush [bucket-type]                                          -> Deletes all the buckets in RIAK"
+	echo  "  riakcli flush [bucket-type] ([bucket])                               -> Deletes all the buckets in RIAK"
 	echo  "  riakcli create search_index [index-name] (n_val)                     -> Create a search index"
 	echo  "  riakcli assign search_index [bucket-type] [bucket-name] [index-name] -> Assign a bucket to a search index"
 	echo  ""
@@ -283,7 +283,7 @@ deleteObject() {
 	cdel ${RIAK_BASE_URL}/types/${TYPE}/buckets/${BUCKET}/keys/${KEY};
 }
 
-flush() {
+flushBucketType() {
 	checkForArgs 1 "riakcli flush [bucket-type]" $*
 	local TYPE=$1; shift;
 	
@@ -292,6 +292,24 @@ flush() {
 		echo "Deleting bucket - types/${TYPE}/buckets/${BUCKET}"
 		deleteBucket ${TYPE} ${BUCKET}
 	done;
+}
+
+flushBucket() {
+	checkForArgs 2 "riakcli flush [bucket-type] [bucket]" $*
+	local TYPE=$1; shift;
+	local BUCKET=$1; shift;
+	
+	echo "Deleting bucket - types/${TYPE}/buckets/${BUCKET}"
+	deleteBucket ${TYPE} ${BUCKET}
+}
+
+flush() {
+	checkForArgs 1 "riakcli flush [bucket-type]" $*
+	if (( $# < 2 ));then
+		flushBucketType "$@"
+	else
+		flushBucket "$@"
+	fi
 }
 
 valuesFromJson() {
